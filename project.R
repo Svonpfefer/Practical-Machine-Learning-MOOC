@@ -1,9 +1,8 @@
 # Course project for Practical Machine Learning 
 
-library(caret)
-library(kernlab)
-library(randomForest)
-library(rio)
+library(randomForest)  # for randomforest functionsß
+library(rio)  # for data import
+library(caret) #necessary for createDataPartition
 
 data_training <- import("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
 data_testing <- import("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
@@ -30,6 +29,9 @@ crossval <- clean_training[-inTrain, ]
 
 # Fit random forest model
 modelForest <- randomForest(classe ~ ., data = training)
+
+# Observe in sample estimation error 
+modelForest$confusion
 
 # Crossvalidate model using the remaining 30% of data
 predictCrossVal <- predict(modelForest, crossval)

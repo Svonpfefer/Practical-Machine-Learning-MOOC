@@ -1,0 +1,79 @@
+---
+title: "Practical Machine Learning Project"
+author: "Stefan von Pfefer"
+date: "22 August 2015"
+output: html_document
+---
+
+The following is the code I wrote to complete the Practical Machine learning project MOOC project. The project required downloading the HAR(Human Activity Recognition) dataset from http://groupware.les.inf.puc-rio.br/har and applying machine learning algorithms learnt from the course.
+
+The following packages were used:
+
+```{r}
+library(randomForest)  # for randomforest functions
+library(rio)  # for data import
+library(caret) #necessary for createDataPartition
+```
+
+I used randomForest package rather than caret for speed (I don't have a very fast laptop).
+
+We then download the data using rio's import functionality:
+```{r}
+data_training <- import("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+data_testing <- import("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+```
+
+Lots of the regressors have NAs and empty spaces, which may biase the results when we come to estimating results. We also remove the first 8 columns, which contain names, and timestamps of exercises.
+
+```{r}
+# Clean data sets, remove columns with NaN or empty cells
+clean_training <- data_training[,colSums(is.na(data_training))==0]
+clean_training <- clean_training[,colSums(clean_training == '')==0]
+
+clean_testing <- data_testing[,colSums(is.na(data_testing))==0]
+clean_testing <- clean_testing[,colSums(clean_testing == '')==0]
+
+# remove identifier columns such as name, timestamps etc
+clean_training <- clean_training[,8:length(clean_training)]
+clean_testing <- clean_testing[,8:length(clean_testing)]
+```
+
+We convert the variable we're interested in (classe) into a factor variable (necessary for randomForest package)
+
+```{r}
+# convert classe variable to factor variable
+clean_training$classe <- as.factor(clean_training$classe)
+```
+
+We create a cross validation set using 30% of the dataset. The original taining set has 196222 observations, so we don't have to worry about small dataset issues.
+
+```{r}
+# split the cleaned testing data into training and cross validation
+inTrain <- createDataPartition(y = clean_training$classe, p = 0.7, list = FALSE)
+training <- clean_training[inTrain, ]
+crossval <- clean_training[-inTrain, ]
+```
+
+Considering the mixture of numeric and alphanumeric estimators, randomforest models seems like a good bet. While the output model is difficult to interpret, it gave better results then a simple classification tree, and also better then using boost.
+We build the randomForest on the training dataset, predict on the cross validation dataset, and use the confusionMatrix function to observe how our model performed.
+
+```{r}
+# Fit random forest model
+modelForest <- randomForest(classe ~ ., data = training)
+
+# Observe in sample estimation error 
+modelForest$confusion
+
+# Crossvalidate model using the remaining 30% of data
+predictCrossVal <- predict(modelForest, crossval)
+confusionMatrix(crossval$classe, predictCrossVal)
+```
+We observe that in-sample error is smaller then cross validated error (unsurprisingly)
+
+
+We finally use the predict function on the testing dataset, and use the code provided by the course organisers to print the results into seperate text file.
+
+```{r}
+# Predict class of test set
+predictTesting <- predict(modelForest,clean_testing)
+```
